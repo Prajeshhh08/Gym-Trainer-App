@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/theme/app_theme.dart';
+import 'providers/providers.dart';
+import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/members_screen.dart';
+import 'screens/schedule_screen.dart';
+import 'screens/analytics_screen.dart';
 
 void main() {
   runApp(const GymFlowApp());
@@ -11,57 +17,160 @@ class GymFlowApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'GymFlow - Gym Trainer App',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0D6EFD),
-          primary: const Color(0xFF0D6EFD),
-          surface: const Color(0xFFF8FAFC),
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-      ),
-      home: const MainNavigationShell(),
+    return const ProviderScope(
+      child: GymFlowRoot(),
     );
   }
 }
 
-class MainNavigationShell extends StatefulWidget {
-  const MainNavigationShell({super.key});
+class GymFlowRoot extends ConsumerWidget {
+  const GymFlowRoot({super.key});
 
   @override
-  State<MainNavigationShell> createState() => _MainNavigationShellState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+
+    return MaterialApp(
+      title: 'GymFlow - Gym Trainer SaaS App',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      home: authState.isAuthenticated
+          ? const MainNavigationShell()
+          : const LoginScreen(),
+    );
+  }
 }
 
-class _MainNavigationShellState extends State<MainNavigationShell> {
-  int _currentIndex = 0;
+class MainNavigationShell extends ConsumerWidget {
+  const MainNavigationShell({super.key});
 
   final List<Widget> _screens = const [
     DashboardScreen(),
     MembersScreen(),
-    _PlaceholderScreen(title: 'Schedule', icon: Icons.calendar_today_outlined),
-    _PlaceholderScreen(title: 'Analytics', icon: Icons.insights_outlined),
+    ScheduleScreen(),
+    AnalyticsScreen(),
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentIndex = ref.watch(navigationIndexProvider);
+    final mediaQuery = MediaQuery.of(context);
+    final isDesktopOrTablet = mediaQuery.size.width >= 720;
+
+    if (isDesktopOrTablet) {
+      return Scaffold(
+        body: Row(
+          children: [
+            // Sidebar Navigation for Desktop/Tablet
+            NavigationRail(
+              selectedIndex: currentIndex,
+              onDestinationSelected: (index) {
+                ref.read(navigationIndexProvider.notifier).state = index;
+              },
+              extended: mediaQuery.size.width >= 1000,
+              backgroundColor: Colors.white,
+              indicatorColor: AppColors.primaryLight,
+              selectedIconTheme: const IconThemeData(color: AppColors.primary, size: 24),
+              unselectedIconTheme: const IconThemeData(color: AppColors.textSecondary, size: 24),
+              selectedLabelTextStyle: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+              unselectedLabelTextStyle: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+              leading: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.fitness_center_rounded, color: Colors.white, size: 22),
+                    ),
+                    if (mediaQuery.size.width >= 1000) ...[
+                      const SizedBox(width: 12),
+                      const Text(
+                        'GymFlow',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              trailing: Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: IconButton(
+                  icon: const Icon(Icons.logout_rounded, color: AppColors.textSecondary),
+                  tooltip: 'Logout',
+                  onPressed: () {
+                    ref.read(authProvider.notifier).logout();
+                  },
+                ),
+              ),
+              destinations: const [
+                NavigationRailDestination(
+                  icon: Icon(Icons.grid_view_rounded),
+                  selectedIcon: Icon(Icons.grid_view_rounded),
+                  label: Text('Dashboard'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.people_alt_outlined),
+                  selectedIcon: Icon(Icons.people_alt_rounded),
+                  label: Text('Members'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.calendar_today_outlined),
+                  selectedIcon: Icon(Icons.calendar_today_rounded),
+                  label: Text('Schedule'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.insights_outlined),
+                  selectedIcon: Icon(Icons.insights_rounded),
+                  label: Text('Analytics'),
+                ),
+              ],
+            ),
+            const VerticalDivider(thickness: 1, width: 1, color: AppColors.border),
+            Expanded(
+              child: IndexedStack(
+                index: currentIndex,
+                children: _screens,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Bottom Navigation Bar for Mobile
     return Scaffold(
       body: IndexedStack(
-        index: _currentIndex,
+        index: currentIndex,
         children: _screens,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           border: const Border(
-            top: BorderSide(color: Color(0xFFF1F5F9), width: 1.0),
+            top: BorderSide(color: AppColors.border, width: 1.0),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, -4),
             ),
@@ -73,10 +182,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(0, Icons.grid_view_rounded, 'Dashboard'),
-                _buildNavItem(1, Icons.people_alt_outlined, 'Members'),
-                _buildNavItem(2, Icons.calendar_today_outlined, 'Schedule'),
-                _buildNavItem(3, Icons.insights_outlined, 'Analytics'),
+                _buildNavItem(context, ref, 0, Icons.grid_view_rounded, 'Dashboard', currentIndex),
+                _buildNavItem(context, ref, 1, Icons.people_alt_outlined, 'Members', currentIndex),
+                _buildNavItem(context, ref, 2, Icons.calendar_today_outlined, 'Schedule', currentIndex),
+                _buildNavItem(context, ref, 3, Icons.insights_outlined, 'Analytics', currentIndex),
               ],
             ),
           ),
@@ -85,20 +194,25 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isSelected = _currentIndex == index;
+  Widget _buildNavItem(
+    BuildContext context,
+    WidgetRef ref,
+    int index,
+    IconData icon,
+    String label,
+    int currentIndex,
+  ) {
+    final isSelected = currentIndex == index;
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
+        ref.read(navigationIndexProvider.notifier).state = index;
       },
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEEF2FF) : Colors.transparent,
+          color: isSelected ? AppColors.primaryLight : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -106,7 +220,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           children: [
             Icon(
               icon,
-              color: isSelected ? const Color(0xFF0D6EFD) : const Color(0xFF64748B),
+              color: isSelected ? AppColors.primary : AppColors.textSecondary,
               size: 24,
             ),
             const SizedBox(height: 4),
@@ -115,49 +229,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? const Color(0xFF0D6EFD) : const Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-  final IconData icon;
-
-  const _PlaceholderScreen({required this.title, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF8FAFC),
-        elevation: 0,
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 64, color: const Color(0xFFCBD5E1)),
-            const SizedBox(height: 16),
-            Text(
-              '$title Screen',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF64748B),
+                color: isSelected ? AppColors.primary : AppColors.textSecondary,
               ),
             ),
           ],

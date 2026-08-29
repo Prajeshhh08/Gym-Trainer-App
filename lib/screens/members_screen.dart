@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/theme/app_theme.dart';
 import '../models/member_model.dart';
 import 'member_profile_screen.dart';
 import 'add_member_screen.dart';
@@ -40,9 +41,9 @@ class _MembersScreenState extends State<MembersScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: AppColors.background,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: Padding(
@@ -58,8 +59,8 @@ class _MembersScreenState extends State<MembersScreen> {
                 errorBuilder: (context, error, stackTrace) => Container(
                   width: 36,
                   height: 36,
-                  color: const Color(0xFFEEF2FF),
-                  child: const Icon(Icons.person, color: Color(0xFF4F46E5), size: 20),
+                  color: AppColors.primaryLight,
+                  child: const Icon(Icons.person, color: AppColors.accent, size: 20),
                 ),
               ),
             ),
@@ -68,7 +69,7 @@ class _MembersScreenState extends State<MembersScreen> {
         title: const Text(
           'GymFlow',
           style: TextStyle(
-            color: Color(0xFF0D6EFD),
+            color: AppColors.primary,
             fontWeight: FontWeight.w800,
             fontSize: 24,
             letterSpacing: -0.5,
