@@ -38,11 +38,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ),
         ),
         title: const Text(
-          'EliteGym Admin',
+          'GymFlow',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: AppColors.primary,
             fontWeight: FontWeight.w800,
-            fontSize: 22,
+            fontSize: 24,
             letterSpacing: -0.5,
           ),
         ),

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_theme.dart';
 import '../providers/providers.dart';
+import '../widgets/auth_widgets.dart';
+import 'forgot_password_screen.dart';
+import 'create_account_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -15,7 +18,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController(text: 'admin@gymname.com');
   final _passwordController = TextEditingController(text: 'password123');
   bool _rememberMe = false;
-  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -24,48 +26,80 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      final success = await ref.read(authProvider.notifier).login(
-            _emailController.text,
-            _passwordController.text,
-          );
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      if (!mounted) return;
-
-      if (!success) {
-        final error = ref.read(authProvider).errorMessage;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error ?? 'Login failed. Check your input.'),
-            backgroundColor: AppColors.warning,
-          ),
+    final success = await ref.read(authProvider.notifier).login(
+          _emailController.text.trim(),
+          _passwordController.text,
         );
-      }
+
+    if (!mounted) return;
+
+    if (!success) {
+      final error = ref.read(authProvider).errorMessage;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded,
+                  color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Text(error ?? 'Login failed. Please try again.'),
+            ],
+          ),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
     }
+    // On success: authProvider.isAuthenticated → true → GymFlowRoot rebuilds
+    // → MainNavigationShell. No manual Navigator call needed.
+  }
+
+  void _goToForgotPassword() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) => const ForgotPasswordScreen()),
+    );
+  }
+
+  void _goToCreateAccount() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) => const CreateAccountScreen()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final screenHeight = MediaQuery.of(context).size.height;
+    // Hero takes ~42% of screen; card starts at ~36% (overlaps hero bottom)
+    final heroHeight = screenHeight * 0.42;
+    final cardTopOffset = screenHeight * 0.34;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       body: Stack(
         children: [
-          // Background Header Gradient/Image
+          // ── Top hero: gym image + gradient + logo ──────────────────
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            height: MediaQuery.of(context).size.height * 0.45,
+            height: heroHeight,
             child: Stack(
+              fit: StackFit.expand,
               children: [
-                // Gym background graphic representation
+                // Gym background photo
                 Image.asset(
                   'assets/images/login.png',
-                  width: double.infinity,
-                  height: double.infinity,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => Container(
                     decoration: const BoxDecoration(
@@ -77,103 +111,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                 ),
-                // Dark overlay gradient for contrast
+                // Dark overlay — enough contrast for white text, not muddy
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withValues(alpha: 0.5),
-                        Colors.black.withValues(alpha: 0.8),
+                        Colors.black.withValues(alpha: 0.35),
+                        Colors.black.withValues(alpha: 0.70),
                       ],
                     ),
                   ),
                 ),
-                // Logo & Branding Header
+                // Logo + GymFlow + tagline
                 SafeArea(
                   child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.4),
-                                blurRadius: 16,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.fitness_center_rounded,
-                            color: Colors.white,
-                            size: 30,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'GymFlow',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Manage Your Gym Smarter',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
+                    child: const GymFlowLogo(light: true),
                   ),
                 ),
               ],
             ),
           ),
 
-          // Scrollable Form Card
+          // ── Scrollable card overlaps the hero bottom ───────────────
           SafeArea(
             child: SingleChildScrollView(
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).size.height * 0.32,
+                top: cardTopOffset,
                 left: 20,
                 right: 20,
                 bottom: 24,
               ),
               child: Center(
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 440),
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 24,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
+                child: AuthCard(
                   child: Form(
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // ── Card title ─────────────────────────────────
                         const Text(
                           'Welcome Back',
                           style: TextStyle(
@@ -193,102 +171,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         const SizedBox(height: 28),
 
-                        // Email Field
-                        const Text(
-                          'Email Address',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
+                        // ── Email ──────────────────────────────────────
+                        AuthTextField(
+                          label: 'Email Address',
+                          hintText: 'admin@gymname.com',
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
+                          prefixIcon: Icons.mail_outline_rounded,
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
                               return 'Email is required';
                             }
                             return null;
                           },
-                          decoration: InputDecoration(
-                            hintText: 'admin@gymname.com',
-                            prefixIcon: const Icon(Icons.mail_outline_rounded, size: 20),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: AppColors.borderDark),
-                            ),
-                          ),
                         ),
                         const SizedBox(height: 20),
 
-                        // Password Field Label + Forgot Password link
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Password',
+                        // ── Password (with Forgot Password link in label)
+                        PasswordField(
+                          label: 'Password',
+                          hintText: '••••••••',
+                          controller: _passwordController,
+                          labelTrailing: TextButton(
+                            onPressed: _goToForgotPassword,
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Forgot Password?',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
+                                color: AppColors.primary,
                               ),
                             ),
-                            TextButton(
-                              onPressed: () {},
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text(
-                                'Forgot Password?',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
+                          ),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
                               return 'Password is required';
                             }
                             return null;
                           },
-                          decoration: InputDecoration(
-                            hintText: '••••••••',
-                            prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                size: 20,
-                                color: AppColors.textSecondary,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: AppColors.borderDark),
-                            ),
-                          ),
                         ),
                         const SizedBox(height: 16),
 
-                        // Remember Me Checkbox
+                        // ── Remember Me ────────────────────────────────
                         Row(
                           children: [
                             SizedBox(
@@ -297,17 +226,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               child: Checkbox(
                                 value: _rememberMe,
                                 onChanged: (val) {
-                                  setState(() {
-                                    _rememberMe = val ?? false;
-                                  });
+                                  setState(() => _rememberMe = val ?? false);
                                 },
                                 activeColor: AppColors.primary,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(4),
                                 ),
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 10),
                             const Text(
                               'Remember Me',
                               style: TextStyle(
@@ -317,77 +246,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 26),
 
-                        // Sign In Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: authState.isLoading ? null : _handleLogin,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: authState.isLoading
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Sign In',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                          ),
+                        // ── Sign In Button ─────────────────────────────
+                        PrimaryButton(
+                          label: 'Sign In',
+                          onPressed: _handleLogin,
+                          isLoading: authState.isLoading,
                         ),
                         const SizedBox(height: 24),
 
                         const Divider(color: AppColors.border),
                         const SizedBox(height: 16),
 
-                        // Footer Signup link
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            const Text(
-                              "Don't have an account? ",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () {},
-                              child: const Text(
-                                'Create Account',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                          ],
+                        // ── Create Account Link ────────────────────────
+                        Center(
+                          child: AuthFooterLink(
+                            prefixText: "Don't have an account? ",
+                            linkText: 'Create Account',
+                            onTap: _goToCreateAccount,
+                          ),
                         ),
                         const SizedBox(height: 16),
 
-                        // Copyright Notice
+                        // ── Copyright ──────────────────────────────────
                         Center(
                           child: Text(
                             '© 2024 GymFlow Inc. All rights reserved.',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.textMuted,
                             ),

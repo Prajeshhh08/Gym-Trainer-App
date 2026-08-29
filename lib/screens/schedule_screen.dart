@@ -37,29 +37,23 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         leading: Padding(
           padding: const EdgeInsets.only(left: 16.0),
           child: Center(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: Image.network(
-                'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150',
-                width: 36,
-                height: 36,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 36,
-                  height: 36,
-                  color: AppColors.accentLight,
-                  child: const Icon(Icons.person, color: AppColors.accent, size: 20),
-                ),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10),
               ),
+              child: const Icon(Icons.fitness_center_rounded, color: Colors.white, size: 20),
             ),
           ),
         ),
         title: const Text(
-          'EliteGym Admin',
+          'GymFlow',
           style: TextStyle(
             color: AppColors.primary,
             fontWeight: FontWeight.w800,
-            fontSize: 22,
+            fontSize: 24,
             letterSpacing: -0.5,
           ),
         ),
